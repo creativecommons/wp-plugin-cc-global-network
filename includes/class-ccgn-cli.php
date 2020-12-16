@@ -2,6 +2,41 @@
 
 class CCGN_cli {
   /**
+   * Copy the Buddypress xProfile fields from one account to another
+   *
+   * ## OPTIONS
+   * --from=<original user id>
+   * The original user ID is the old account ID or the one we're going to gather the
+   * data in order to move it to another
+   * 
+   * --to=<target user id>
+   * The new account user id where the data is going to move
+   */
+  function buddypress_copy( $args, $assoc_args ) {
+    if (!empty($assoc_args['from'] && !empty($assoc_args['to']))) {
+      $this->force_replace_xprofile_fields( $assoc_args );
+    }
+  }
+  private function force_replace_xprofile_fields( $assoc_args ) {
+    $individual_profile_field = array(
+      'Bio',
+      'Languages',
+      'Location',
+      'Preferred Country Chapter',
+      'Areas of Interest',
+      'Links'
+    );
+    foreach( $individual_profile_field as $field ) {
+      $source_field = xprofile_get_field_data($field, intval( $assoc_args['from'] ) );
+      xprofile_delete_field_data( $field, intval( $assoc_args['to'] ) );
+
+      $target_field =  xprofile_set_field_data($field, intval( $assoc_args['to'] ) ,  $source_field );
+      if ( $target_field ) {
+        WP_CLI::log('Buddypress field updated: '. $field);
+      }
+    }
+  }
+  /**
    * Move the account data to a new one
    * WARNING! please make sure the user IDs are correct before executing this command
    * it replaces referenced user IDs and this could cause
@@ -17,14 +52,16 @@ class CCGN_cli {
    */
   function move_account( $args, $assoc_args) {
     if (!empty($assoc_args['from'] && !empty($assoc_args['to']))) {
-      WP_CLI::log('Moving data from user ID:  '. $assoc_args['from'] .' to'. $assoc_args['to']);
+      WP_CLI::log('Moving data from user ID:  '. $assoc_args['from'] .' to '. $assoc_args['to']);
+      $origin_user_type = ccgn_applicant_type_desc( intval( $assoc_args['from'] ) );
       $this->link_old_entries( $assoc_args );
       //set user type
-      $this->set_user_type( $assoc_args );
+      $this->set_user_type( $assoc_args, $origin_user_type );
       //set user_roles
       $this->set_user_roles( $assoc_args );
       $this->switch_nicenames( $assoc_args );
       ccgn_create_profile( intval( $assoc_args['to'] ) );
+      $this->replace_xprofile_fields( $assoc_args, $origin_user_type );
 
       _ccgn_registration_user_set_stage( intval( $assoc_args['to'] ), CCGN_APPLICATION_STATE_ACCEPTED );
       
@@ -33,6 +70,31 @@ class CCGN_cli {
     } else {
       WP_CLI::error( 'You need to set --from and --to parameters' );
     }
+  }
+  private function replace_xprofile_fields( $assoc_args, $origin_user_type ) {
+    $individual_profile_field = array(
+      'Bio',
+      'Languages',
+      'Location',
+      'Preferred Country Chapter',
+      'Areas of Interest',
+      'Links'
+    );
+    $institutional_profile_field = array(
+      'Website',
+      'Representative'
+    );
+    $list_fields = ( $origin_user_type == 'Individual' ) ? $individual_profile_field : $institutional_profile_field;
+    
+    foreach( $list_fields as $field ) {
+      $source_field = xprofile_get_field_data($field, intval( $assoc_args['from'] ) );
+      $target_field =  xprofile_set_field_data($field, intval( $assoc_args['to'] ) ,  $source_field );
+      if ( $target_field ) {
+        WP_CLI::log('Buddypress field updated: '. $field);
+      }
+    }
+
+    
   }
   private function link_old_entries( $assoc_args ) {
     //refered as a voucher on position 1
@@ -71,8 +133,8 @@ class CCGN_cli {
       WP_CLI::error( "Couldn't update roles" );
     }
   }
-  private function set_user_type( $assoc_args ) {
-    $origin_user_type = ccgn_applicant_type_desc( intval( $assoc_args['from'] ) );
+  private function set_user_type( $assoc_args, $origin_user_type ) {
+    
     if ( $origin_user_type == 'Individual' ) {
       ccgn_user_set_individual_applicant( intval( $assoc_args['to'] ) );
       ccgn_user_level_set_member_individual( intval( $assoc_args['to'] ) );
