@@ -82,6 +82,9 @@ if ( defined( 'CCGN_DEVELOPMENT' ) || defined( 'CCGN_TESTING' ) ) {
     require_once(CCGN_PATH . 'testing/reset-state.php');
 }
 
+require_once CCGN_PATH  . '/includes/class-ccgn-cli.php';
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // CAS / WordPress registration
 ////////////////////////////////////////////////////////////////////////////////

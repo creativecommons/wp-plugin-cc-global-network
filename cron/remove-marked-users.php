@@ -31,7 +31,8 @@ function ccgn_close_and_remove_retention_data_applicant($applicant_id)
     delete_user_meta($applicant_id, CCGN_APPLICATION_TYPE);
     delete_user_meta($applicant_id, CCGN_APPLICATION_STATE);
     delete_user_meta($applicant_id, CCGN_USER_IS_AUTOVOUCHED);
-
+    
+    require_once(ABSPATH.'wp-admin/includes/user.php');
     $delete = wp_delete_user($applicant_id);
 }
 
