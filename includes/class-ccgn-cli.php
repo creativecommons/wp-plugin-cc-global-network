@@ -30,7 +30,7 @@ class CCGN_cli {
           WP_CLI::line('');
         }
       } else {
-        WP_CLI::error( 'Invalid User ID' );  
+        WP_CLI::error( 'Invalid User ID' );
       }
     } else {
       WP_CLI::error( 'No user ID specified: Use: wp ccgn get_vouchers <user ID>' );
@@ -45,7 +45,11 @@ class CCGN_cli {
    */
   function set_status( $args, $assoc_args ) {
     if ( !empty( $args[0] ) && !empty( $args[1] ) ) {
-      $this->set_user_status( intval( $args[0] ), $args[1] );
+      if ( $this->does_user_exist( $args[0] ) ) {
+        $this->set_user_status( intval( $args[0] ), $args[1] );
+      } else {
+        WP_CLI::error( 'Invalid User ID' );
+      }
     } else {
       WP_CLI::error( 'No user or status specified. Use: wp ccgn set_status <user ID> <status>' );
     }
