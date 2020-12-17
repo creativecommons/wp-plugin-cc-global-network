@@ -2,6 +2,110 @@
 
 class CCGN_cli {
   /**
+   * Get a list of vouchers from a user
+   * 
+   * Usage: wp ccgn get_vouchers <user ID>
+   */
+  function get_vouchers( $args, $assoc_args ) {
+    if ( !empty( $args[0] ) ) {
+      if ( $this->does_user_exist( $args[0] )) {
+        $vouchers = ccgn_application_vouches( $args[0] );
+        $requested_user = get_userdata( intval( $args[0] ) );
+        WP_CLI::line( WP_CLI::colorize( '%8# Vouchers from: '.$requested_user->display_name.' %n' ) );
+        WP_CLI::line('');
+        foreach( $vouchers as $voucher ) {
+          $voucher_user = get_userdata( $voucher['created_by'] );
+          WP_CLI::line( WP_CLI::colorize('%Y>> Vouch from: '. $voucher_user->display_name) );
+          WP_CLI::line( WP_CLI::colorize( '%MVouch ID: '.$voucher['id'].'%n' ) );
+          WP_CLI::line('Answer: '.$voucher[3]);
+          if ( !empty( $voucher[4] ) ) {
+            WP_CLI::line( 'Reason:' );
+            WP_CLI::line( $voucher[4] );
+          }
+          if ( !empty( $voucher[9] ) ) {
+            WP_CLI::line( 'Reason:' );
+            WP_CLI::line( $voucher[9] );
+          }
+          WP_CLI::line('------------------------');
+          WP_CLI::line('');
+        }
+      } else {
+        WP_CLI::error( 'Invalid User ID' );
+      }
+    } else {
+      WP_CLI::error( 'No user ID specified: Use: wp ccgn get_vouchers <user ID>' );
+    }
+  }
+  /**
+   * Set user type (Individual or Institution)
+   * 
+   * Usage: wp ccgn set_type <user ID> <individual/institution>
+   */
+  function set_type( $args, $assoc_args ) {
+    if ( !empty( $args[0] ) && !empty( $args[1] ) ) {
+      if ( $this->does_user_exist( $args[0] ) ) {
+        if ( $args[1] == 'individual' ) {
+          ccgn_user_set_individual_applicant( intval( $args[0] ) );
+          ccgn_user_level_set_member_individual( intval( $args[0] ) );
+          WP_CLI::success( 'User type for ID '.$args[0].' changed to: '.$args[1] );
+        } else if ( $args[1] == 'institution' ) {
+          ccgn_user_set_institutional_applicant( intval( $args[0] ) );
+          ccgn_user_level_set_member_institution( intval( $args[0] ) );
+          WP_CLI::success( 'User type for ID '.$args[0].' changed to: '.$args[1] );
+        } else {
+          WP_CLI::error( "The user type should be individual or institution" );  
+        }
+      } else {
+        WP_CLI::error( 'Invalid User ID' );
+      }
+    } else {
+      WP_CLI::error( 'No user or type specified. Use: wp ccgn set_type <user ID> <individual/institution>' );
+    }
+  }
+  /**
+   * Sets the status of a user
+   * the status should exist in the list of allowed statuses.
+   * you can see that list here: https://wikijs.creativecommons.org/tech/websites/ccgn-development#user-status
+   * 
+   * Usage: wp ccgn set_status <user ID> <new status>
+   */
+  function set_status( $args, $assoc_args ) {
+    if ( !empty( $args[0] ) && !empty( $args[1] ) ) {
+      if ( $this->does_user_exist( $args[0] ) ) {
+        $this->set_user_status( intval( $args[0] ), $args[1] );
+        WP_CLI::success( 'Status from user ID '.$args[0].' changed to: '.$args[1] );
+      } else {
+        WP_CLI::error( 'Invalid User ID' );
+      }
+    } else {
+      WP_CLI::error( 'No user or status specified. Use: wp ccgn set_status <user ID> <status>' );
+    }
+  }
+
+  private function set_user_status( $user_id, $status ) {
+    $allowed_status = array(
+      'charter-form',
+      'details-form',
+      'vouchers-form',
+      'received',
+      'vouching',
+      'legal',
+      'update-vouchers',
+      'update-details',
+      'rejected',
+      'accepted',
+      'on-hold',
+      'rejected-because-didnt-update-vouchers',
+      'to-be-reviewed',
+      'to-be-deleted'
+    );
+    if ( in_array( $status, $allowed_status ) ) {
+      _ccgn_registration_user_set_stage( $user_id, $status );
+    } else {
+      WP_CLI::error( 'User status not accepted. See a list of accepted status here: https://wikijs.creativecommons.org/tech/websites/ccgn-development#user-status' );
+    }
+  }
+  /**
    * Copy the Buddypress xProfile fields from one account to another
    *
    * ## OPTIONS
@@ -52,20 +156,24 @@ class CCGN_cli {
    */
   function move_account( $args, $assoc_args) {
     if (!empty($assoc_args['from'] && !empty($assoc_args['to']))) {
-      WP_CLI::log('Moving data from user ID:  '. $assoc_args['from'] .' to '. $assoc_args['to']);
-      $origin_user_type = ccgn_applicant_type_desc( intval( $assoc_args['from'] ) );
-      $this->link_old_entries( $assoc_args );
-      //set user type
-      $this->set_user_type( $assoc_args, $origin_user_type );
-      //set user_roles
-      $this->set_user_roles( $assoc_args );
-      $this->switch_nicenames( $assoc_args );
-      ccgn_create_profile( intval( $assoc_args['to'] ) );
-      $this->replace_xprofile_fields( $assoc_args, $origin_user_type );
+      if ( $this->does_user_exist( $assoc_args['from'] ) && $this->does_user_exist( $assoc_args['to'] ) ) {
+        WP_CLI::log('Moving data from user ID:  '. $assoc_args['from'] .' to '. $assoc_args['to']);
+        $origin_user_type = ccgn_applicant_type_desc( intval( $assoc_args['from'] ) );
+        $this->link_old_entries( $assoc_args );
+        //set user type
+        $this->set_user_type( $assoc_args, $origin_user_type );
+        //set user_roles
+        $this->set_user_roles( $assoc_args );
+        $this->switch_nicenames( $assoc_args );
+        ccgn_create_profile( intval( $assoc_args['to'] ) );
+        $this->replace_xprofile_fields( $assoc_args, $origin_user_type );
 
-      _ccgn_registration_user_set_stage( intval( $assoc_args['to'] ), CCGN_APPLICATION_STATE_ACCEPTED );
-      
-      WP_CLI::success( 'Profile moved' );
+        _ccgn_registration_user_set_stage( intval( $assoc_args['to'] ), CCGN_APPLICATION_STATE_ACCEPTED );
+        
+        WP_CLI::success( 'Profile moved' );
+      } else {
+        WP_CLI::error( 'The specified user ID does not exist' );
+      }
 
     } else {
       WP_CLI::error( 'You need to set --from and --to parameters' );
@@ -142,6 +250,9 @@ class CCGN_cli {
       ccgn_user_set_institutional_applicant( intval( $assoc_args['to'] ) );
       ccgn_user_level_set_member_institution( intval( $assoc_args['to'] ) );
     }
+  }
+  private function does_user_exist( int $user_id ) : bool {
+    return (bool) get_users( [ 'include' => $user_id, 'fields' => 'ID' ] );
   }
 }
 
