@@ -37,6 +37,32 @@ class CCGN_cli {
     }
   }
   /**
+   * Set user type (Individual or Institution)
+   * 
+   * Usage: wp ccgn set_type <user ID> <individual/institution>
+   */
+  function set_type( $args, $assoc_args ) {
+    if ( !empty( $args[0] ) && !empty( $args[1] ) ) {
+      if ( $this->does_user_exist( $args[0] ) ) {
+        if ( $args[1] == 'individual' ) {
+          ccgn_user_set_individual_applicant( intval( $args[0] ) );
+          ccgn_user_level_set_member_individual( intval( $args[0] ) );
+          WP_CLI::success( 'User type for ID '.$args[0].' changed to: '.$args[1] );
+        } else if ( $args[1] == 'institution' ) {
+          ccgn_user_set_institutional_applicant( intval( $args[0] ) );
+          ccgn_user_level_set_member_institution( intval( $args[0] ) );
+          WP_CLI::success( 'User type for ID '.$args[0].' changed to: '.$args[1] );
+        } else {
+          WP_CLI::error( "The user type should be individual or institution" );  
+        }
+      } else {
+        WP_CLI::error( 'Invalid User ID' );
+      }
+    } else {
+      WP_CLI::error( 'No user or type specified. Use: wp ccgn set_type <user ID> <individual/institution>' );
+    }
+  }
+  /**
    * Sets the status of a user
    * the status should exist in the list of allowed statuses.
    * you can see that list here: https://wikijs.creativecommons.org/tech/websites/ccgn-development#user-status
@@ -47,6 +73,7 @@ class CCGN_cli {
     if ( !empty( $args[0] ) && !empty( $args[1] ) ) {
       if ( $this->does_user_exist( $args[0] ) ) {
         $this->set_user_status( intval( $args[0] ), $args[1] );
+        WP_CLI::success( 'Status from user ID '.$args[0].' changed to: '.$args[1] );
       } else {
         WP_CLI::error( 'Invalid User ID' );
       }
