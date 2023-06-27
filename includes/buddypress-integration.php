@@ -928,9 +928,7 @@ function _bp_not_signed_in_redirect () {
     ) {
         if( ! is_user_logged_in() ) {
             wp_redirect(
-                'https://login.creativecommons.org/login?service='
-                . get_site_url()
-                // Doesn't work at this point . get_permalink()
+                wp_login_url()
             );
             exit();
         }

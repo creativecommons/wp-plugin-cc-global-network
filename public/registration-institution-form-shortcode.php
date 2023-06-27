@@ -151,7 +151,7 @@ function ccgn_registration_institution_shortcode_render_view ( $user ) {
 function ccgn_registration_institution_shortcode_render ( $atts ) {
     if( ! is_user_logged_in() ) {
         echo '<h3>OK! Let&apos;s get started</h3>';
-        echo '<p>First you need to log in with your CCID.</p>';
+        echo '<p>First you need to log in with your CCGN Account.</p>';
         echo '<a class="cc-btn" href="'
             . wp_login_url( get_permalink() )
             . '">Log in</a>';
